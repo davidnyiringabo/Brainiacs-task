@@ -12,6 +12,7 @@ const { check, validationResults } = require('express-validator')
 const app = express();
 const path = require('path');
 const { error } = require('console');
+const { query } = require('express');
 app.set('view engine', 'ejs')
     // -- -- -- -- -- -- -- -- for landing---------------------
 app.get('/', (req, res) => {
@@ -25,6 +26,10 @@ app.get('/login', (req, res) => {
 app.get('/homepage', (req, res) => {
     res.sendFile(path.join(__dirname, 'homepage.html'))
 })
+
+let values; //this is a grobal variable containing the data of the user from the database;
+
+let userLoginEmail;
 app.post('/validate', urlencodedParser, (req, res) => {
         let loginData = req.body
         let loginEmail = req.body.email
@@ -32,9 +37,10 @@ app.post('/validate', urlencodedParser, (req, res) => {
 
         db.query(select, loginEmail, (err, results) => {
             if (err) throw err;
-            let values = results;
-            if (loginData.email == values[0].email && loginData.username == values[0].Fullname && loginData.password == values[0].password) {
-                res.render('homepage')
+            values = results[0];
+            // console.log(values)
+            if (loginData.email == values.email && loginData.username == values.Fullname && loginData.password == values.password) {
+                res.render('homepage', { username: values.Fullname, email: values.email })
             } else {
 
                 res.render('invalid');
@@ -57,7 +63,6 @@ const db = mysql.createConnection({
     database: 'vanica'
 })
 db.connect();
-
 app.post('/register', urlencodedParser, (req, res) => {
     let userinfo = {
         fullname: req.body.fullname,
@@ -72,7 +77,6 @@ app.post('/register', urlencodedParser, (req, res) => {
 
     db.query(sql, userinfo, (err, results) => {
         if (err) throw err;
-        console.log(results);
         res.end("The data has been saved successfully")
     })
 
@@ -100,3 +104,20 @@ app.post('/photoDb', upload.single('image'), (req, res) => {
 app.listen(3000, () => {
     console.log("The server is running now");
 })
+
+app.get('/updateProfile', urlencodedParser, (req, res) => {
+    let updatedData = req.query
+
+    res.render('update', {
+        username: values.Fullname,
+        email: values.email,
+        password: values.password
+    })
+    let query = `UPDATE user SET Fullname= ?, email= ?, password=? WHERE email=?`
+    db.query(query, [updatedData.username, updatedData.email, updatedData.password, values.email], (err, results) => {
+        if (err) throw err;
+        res.render('homepage', { username: values.Fullname, email: values.email })
+    })
+})
+
+// app.post('/profile', )
